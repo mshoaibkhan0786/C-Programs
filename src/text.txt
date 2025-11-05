@@ -1,26 +1,108 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Search, CheckCircle, Trash2, Plus, Code, X, Edit3 } from "react-feather";
-import {
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-} from "firebase/firestore";
-import { db, auth } from "./firebase";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+I have built a website using chatgpt and I want to continue that chat from here  so I am providing a rough Idea about that chat 
 
-const ADMIN_EMAIL = "mshoaibkhan0988@gmail.com";
+🧠 Summary — “C Programs / Study Tracker” React + Firebase App
+⚙️ Tech Stack
 
-const DEFAULT_CATEGORIES = [
+React (Vite or CRA)
+
+Firebase (Firestore + Auth)
+
+TailwindCSS for styling
+
+react-syntax-highlighter for C code syntax highlighting
+
+react-feather icons for UI
+
+🎯 Project Overview
+
+A C Programming Study Tracker web app for organizing, solving, and tracking coding questions.
+Users can:
+
+View categorized programming questions
+
+Add new questions with optional code
+
+Mark them complete
+
+Search and filter questions
+
+Switch between light and dark modes
+
+Admin users can additionally:
+
+Add/delete categories
+
+Edit/delete questions
+
+Manage all content directly from the UI
+
+⚙️ Firebase Configuration
+Firebase Project:
+
+Name: study-tracker (previously codesmanager)
+
+Configuration (firebaseConfig):
+const firebaseConfig = {
+  apiKey: "AIzaSyBJKqkr4ltuPMzAbolCbH8u4WdPQRMMMS4",
+  authDomain: "codesmanager.firebaseapp.com",
+  projectId: "codesmanager",
+  storageBucket: "codesmanager.firebasestorage.app",
+  messagingSenderId: "821213605605",
+  appId: "1:821213605605:web:b778fae8ed7dcf3972ae0c",
+  measurementId: "G-LV8LFGF7QP"
+};
+
+Initialization Code:
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+
+🔑 Authentication
+
+Admin email: mshoaibkhan0988@gmail.com
+
+Admin-only actions:
+
+Edit questions
+
+Delete questions
+
+Delete categories
+
+Normal users:
+
+Can add new questions (visible to everyone)
+
+Cannot edit or delete existing questions
+
+Can mark questions complete
+
+Can search and browse freely
+
+Login handled through Firebase Auth with Email/Password.
+
+🗂 Firestore Data Structure
+
+Collection: questions
+Each document structure:
+
+{
+  text: "Write a C program to reverse a string",
+  category: "Strings",
+  code: "C code here",
+  complete: false
+}
+
+🧱 Core App Features
+🗃 Categories
+
+Default categories:
+
+[
   "Strings",
   "1D arrays",
   "2D arrays",
@@ -29,426 +111,26 @@ const DEFAULT_CATEGORIES = [
   "Pointers",
   "Structures",
   "File handling",
-  "Loops & Patterns",
-];
+  "Loops & Patterns"
+]
 
-export default function App() {
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  const [questions, setQuestions] = useState([]);
-  const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showLogin, setShowLogin] = useState(false);
-  const [newCategory, setNewCategory] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
 
-  const refs = useRef({});
+Admin can add/delete categories.
 
-  // Auth listener
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setIsAdmin(u?.email === ADMIN_EMAIL);
-    });
-    return unsub;
-  }, []);
+Clicking a category scrolls smoothly to its section.
 
-  // Firestore listener
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "questions"), (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setQuestions(data);
-    });
-    return unsub;
-  }, []);
+📝 Questions
 
-  // Add question
-  async function addQuestion(text, category) {
-    if (!text.trim()) return;
-    await addDoc(collection(db, "questions"), {
-      text,
-      category,
-      complete: false,
-      code: "",
-    });
-  }
+Each question shows:
 
-  // Toggle completion
-  async function toggleComplete(id) {
-    const q = questions.find((x) => x.id === id);
-    if (!q) return;
-    await updateDoc(doc(db, "questions", id), { complete: !q.complete });
-  }
+Text
 
-  // Save code
-  async function saveCode(id, code) {
-    try {
-      await updateDoc(doc(db, "questions", id), { code });
-      setQuestions((prev) =>
-        prev.map((x) => (x.id === id ? { ...x, code, editMode: false } : x))
-      );
-    } catch (err) {
-      console.error("Error saving code:", err);
-      alert("Failed to save code. Check console for details.");
-    }
-  }
+Completion checkbox
 
-  // Remove question
-  async function removeQuestion(id) {
-    if (!isAdmin) return alert("Only admin can delete.");
-    await deleteDoc(doc(db, "questions", id));
-  }
+Edit (admin only)
 
-  // Add category
-  function addCategory() {
-    const trimmed = newCategory.trim();
-    if (!trimmed) return;
-    if (categories.includes(trimmed)) return alert("Already exists.");
-    setCategories([...categories, trimmed]);
-    setNewCategory("");
-  }
+Delete (admin only)
 
-  // Delete category
-  function deleteCategory(cat) {
-    if (!isAdmin) return;
-    if (!window.confirm(`Delete category "${cat}"?`)) return;
-    setCategories((prev) => prev.filter((c) => c !== cat));
-    questions
-      .filter((q) => q.category === cat)
-      .forEach((q) => deleteDoc(doc(db, "questions", q.id)));
-  }
+Clicking a question toggles code visibility.
 
-  // Login / Logout
-  async function handleLogin(e) {
-    e.preventDefault();
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      setEmail("");
-      setPassword("");
-      setShowLogin(false);
-    } catch (err) {
-      alert("Login failed: " + err.message);
-    }
-  }
-
-  async function handleLogout() {
-    await signOut(auth);
-  }
-
-  // Group questions
-  const grouped = categories.map((c, idx) => ({
-    category: `${idx + 1}. ${c}`,
-    items: questions
-      .filter(
-        (q) =>
-          q.category.toLowerCase() === c.toLowerCase() &&
-          q.text.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .sort((a, b) => a.text.localeCompare(b.text)),
-  }));
-
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <div className="flex flex-1">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-md p-4 flex flex-col justify-between fixed h-screen">
-          <div>
-            <h2 className="text-2xl font-bold text-indigo-700 mb-4">
-              Study Tracker
-            </h2>
-
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-600 uppercase">
-                Categories
-              </h3>
-              {isAdmin && (
-                <button
-                  onClick={addCategory}
-                  className="text-indigo-500 hover:text-indigo-700"
-                >
-                  <Plus size={16} />
-                </button>
-              )}
-            </div>
-
-            <input
-              type="text"
-              placeholder="New category..."
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              className="w-full p-1 border border-gray-300 rounded mb-2 text-sm"
-            />
-
-            <ul className="space-y-1">
-              {categories.map((c, i) => (
-                <li
-                  key={i}
-                  className="flex justify-between items-center text-gray-700 hover:bg-gray-100 rounded-md px-2 py-1 cursor-pointer"
-                  onClick={() => {
-                    refs.current[c]?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                >
-                  <span>
-                    {i + 1}. {c}
-                  </span>
-                  {isAdmin && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteCategory(c);
-                      }}
-                      className="text-red-400 hover:text-red-600"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="mt-auto">
-            {user ? (
-              <button
-                onClick={handleLogout}
-                className="w-full py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm rounded-md"
-              >
-                Logout
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowLogin(true)}
-                className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md"
-              >
-                Admin Login
-              </button>
-            )}
-          </div>
-        </aside>
-
-        {/* Main */}
-        <main className="ml-64 flex-1 p-8 overflow-y-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Questions List</h1>
-            <div className="relative">
-              <Search
-                size={16}
-                className="absolute left-3 top-2.5 text-gray-400"
-              />
-              <input
-                type="text"
-                placeholder="Search questions..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border border-gray-300 rounded-md pl-8 pr-3 py-1.5 text-sm w-64 focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          {grouped.map((g) => (
-            <section
-              key={g.category}
-              ref={(el) => (refs.current[g.category] = el)}
-              className="mb-10"
-            >
-              <h3 className="text-xl font-semibold text-indigo-700 mb-3">
-                {g.category}
-              </h3>
-
-              <ul className="space-y-3">
-                {g.items.map((q, i) => (
-                  <li
-                    key={q.id}
-                    className="bg-white shadow p-3 rounded-md flex flex-col border border-gray-100 cursor-pointer hover:bg-gray-50 transition-all"
-                    onClick={() =>
-                      setQuestions((prev) =>
-                        prev.map((x) =>
-                          x.id === q.id
-                            ? { ...x, showCode: !x.showCode }
-                            : x
-                        )
-                      )
-                    }
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleComplete(q.id);
-                          }}
-                        >
-                          <CheckCircle
-                            size={18}
-                            className={`transition-colors duration-200 ${q.complete ? "text-green-600" : "text-gray-400"
-                              }`}
-                          />
-                        </button>
-                        <span className="font-medium text-gray-800">
-                          {i + 1}. {q.text}
-                        </span>
-                      </div>
-
-                      {isAdmin && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeQuestion(q.id);
-                          }}
-                          className="text-red-500 hover:text-red-700 transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </div>
-
-                    {q.showCode && (
-                      <div
-                        className="mt-3 border border-gray-200 rounded-md p-3 bg-gray-50"
-                        onClick={(e) => e.stopPropagation()} // 👈 prevents closing on click inside
-                      >
-
-                        {isAdmin && q.editMode ? (
-                          <>
-                            <textarea
-                              value={q.localCode ?? q.code ?? ""}
-                              onChange={(e) =>
-                                setQuestions((prev) =>
-                                  prev.map((x) =>
-                                    x.id === q.id
-                                      ? { ...x, localCode: e.target.value }
-                                      : x
-                                  )
-                                )
-                              }
-                              placeholder="Write your code here..."
-                              rows={6}
-                              className="w-full p-2 border border-gray-300 rounded-md font-mono text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                            <div className="flex justify-end mt-3 gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const codeToSave =
-                                    q.localCode ?? q.code ?? "";
-                                  saveCode(q.id, codeToSave);
-                                }}
-                                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-all"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setQuestions((prev) =>
-                                    prev.map((x) =>
-                                      x.id === q.id
-                                        ? { ...x, editMode: false, localCode: "" }
-                                        : x
-                                    )
-                                  );
-                                }}
-                                className="px-4 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-100 transition-all"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="relative">
-                            <SyntaxHighlighter
-                              language="c"
-                              style={oneDark}
-                              className="rounded-md text-sm"
-                            >
-                              {q.code || "// No code added yet"}
-                            </SyntaxHighlighter>
-                            {isAdmin && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setQuestions((prev) =>
-                                    prev.map((x) =>
-                                      x.id === q.id
-                                        ? { ...x, editMode: true }
-                                        : x
-                                    )
-                                  );
-                                }}
-                                className="absolute top-2 right-2 p-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
-                              >
-                                <Edit3 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-
-          {isAdmin && (
-            <button
-              className="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition-all"
-              onClick={() => addQuestion(prompt("Enter new question:"), "Strings")}
-            >
-              <Plus size={20} />
-            </button>
-          )}
-        </main>
-      </div>
-
-      {/* Footer */}
-      <footer className="py-2 text-center text-gray-500 text-sm opacity-60 border-t border-gray-200">
-        Built by Mohammad Shoaib Khan
-      </footer>
-
-      {/* Login Modal */}
-      {showLogin && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-          <form
-            onSubmit={handleLogin}
-            className="bg-white p-6 rounded-md shadow-md w-80"
-          >
-            <h2 className="text-lg font-semibold mb-3 text-gray-800">
-              Admin Login
-            </h2>
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full mb-2 p-2 border border-gray-300 rounded-md"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mb-4 p-2 border border-gray-300 rounded-md"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowLogin(false)}
-                className="px-3 py-1.5 border rounded-md text-sm text-gray-600 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm"
-              >
-                Login
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
+Code blocks are syntax highlighted (using Prism )
